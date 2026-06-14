@@ -41,18 +41,17 @@
 
 ```
 字典
-├─ 鍵 contents     類型：陣列(Array)
-│   └─ 項目1        類型：字典(Dictionary)
-│        └─ 鍵 parts   類型：陣列(Array)
-│             └─ 項目1   類型：字典(Dictionary)
-│                  └─ 鍵 text   類型：文字  值＝步驟2的「文字」變數
-└─ 鍵 generationConfig  類型：字典(Dictionary)
-     └─ 鍵 temperature   類型：數字  值＝0.7
+└─ 鍵 contents     類型：陣列(Array)
+    └─ 項目1        類型：字典(Dictionary)
+         └─ 鍵 parts   類型：陣列(Array)
+              └─ 項目1   類型：字典(Dictionary)
+                   └─ 鍵 text   類型：文字  值＝步驟2的「文字」變數
 ```
 
 > 怎麼點：
 > 1. 新增項目 → 類型選**陣列** → 鍵打 `contents` → 進去再「新增項目」→ 類型**字典** → 進去新增 `parts`（**陣列**）→ 進去**字典** → 新增 `text`（**文字**），值的地方插入步驟 2 的「文字」變數。
-> 2. 回到最外層字典，新增 `generationConfig`（**字典**）→ 裡面新增 `temperature`（**數字**）填 `0.7`。
+>
+> 註：`generationConfig / temperature` 可省略（Gemini 會用預設值，品質一樣好）。若手機字典的「數字」欄位無法輸入 0.7，直接不要這段即可。
 
 ### 步驟 4：呼叫 Gemini
 - 加「**取得 URL 內容**」（Get Contents of URL）
