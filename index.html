@@ -90,6 +90,14 @@
   .hint{color:var(--muted);font-size:13px;text-align:center;padding:8px;}
   .err{color:#a85b5b;font-size:14px;text-align:center;padding:10px;}
 
+  /* 學習迴路 */
+  .learn{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px;}
+  .learn #teachBtn{width:100%;color:var(--muted);}
+  .teach-ta{
+    width:100%;min-height:80px;border:1px solid var(--line);border-radius:12px;
+    padding:10px;font:inherit;outline:none;background:#fbfaf7;color:var(--ink);resize:vertical;
+  }
+
   /* Settings & History panels */
   .panel{display:none;}
   .panel.active{display:block;}
@@ -156,6 +164,13 @@
         <button class="ghost" id="backFromSettings">返回</button>
       </div>
     </div>
+    <div class="card">
+      <label class="field">語氣學習</label>
+      <div class="note" id="styleStatus" style="margin-top:0;"></div>
+      <div class="row">
+        <button class="ghost" id="resetStyle" style="flex:1;color:#c98b8b;">重設成預設語氣</button>
+      </div>
+    </div>
   </div>
 
   <!-- 歷史 -->
@@ -192,7 +207,27 @@ const SYSTEM_PROMPT = `你是晉博的即時溝通教練，專長「非暴力溝
 
 【邊界】若原話其實已經夠好：兩版可相近，並在 comment 說「這句沒問題，可以直接講」。
 
+【晉博的語氣（最重要：兩版都要像「他本人」會講出來的話，不要像範本）】
+- 他習慣把事情講清楚、有脈絡，順序常是「發生什麼事 → 我的感受 → 為什麼 → 我希望你怎麼做」，不要只用一句短話帶過。
+- 用問句提出請求（「可以…嗎？」「方便…嗎？」），比命令句自然。
+- 會用「真的」適度加強語氣；但他沒有「欸／啦／喔／齁」這類口頭禪，不要亂加語助詞。
+- 用字要平實，不要用成語或俏皮話（例：不要說「分身」，他會說「時間沒辦法排開」）。
+- 對同事／合作對象：用名字或綽號開場、給具體資訊（日期、細節）、客氣但清楚（常用「不好意思」「想跟你確認」）。
+- 對親近的人（女友）：可以講感受、偶爾一個表情符號，但不要肉麻。
+- 拒絕時：先謝謝對方 → 給簡短真實理由 → 提替代方案 → 用問句收尾。
+- 絕對避免：質問句（如「誰要負責」）、翻舊帳（如「我講過很多次了」）。
+
 【語言】一律繁體中文、台灣用語，像真人講話。嚴禁簡體字。`;
+
+// 晉博的語氣範例庫：種子＝訪談校準過的句子；之後使用者每次「改成我會講的」都會存進來，越用越像他。
+const STYLE_SEED = [
+  { input:"這個我真的講過很多次了，把東西丟在地板上真的很危險，如果我踩到摔倒怎麼辦，誰要負責？",
+    mine:"東西放在地板上我看到會有點緊張，因為我真的會怕沒注意踩到滑倒。可以麻煩你之後順手收到桌上或旁邊嗎？這樣我會安心很多 🙏" },
+  { input:"這個文件在 12/10 要繳交，請盡快提供！",
+    mine:"Cindy 想跟你確認一下，這份文件 12/10 要交，我這邊要先收到才能接著處理。方便今天或明天給我嗎？不然怕會卡到後面的時間。" },
+  { input:"我那個時候不方便，可以請你找其他人幫忙嗎？",
+    mine:"謝謝你想到我！不過我那時間已經排了別的事，真的沒辦法排開，先跟你說聲抱歉～你要不要問問看其他人？" }
+];
 
 const SCHEMA = {
   type:"OBJECT",
@@ -213,6 +248,29 @@ const getHistory = () => { try{return JSON.parse(localStorage.getItem("nvc_histo
 const setHistory = (arr) => localStorage.setItem("nvc_history", JSON.stringify(arr.slice(0,HISTORY_LIMIT)));
 const esc = (s) => (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
+/* ===== 語氣範例庫（學習迴路） ===== */
+const STYLE_LIMIT = 12; // 餵給 AI 時最多帶最近 12 組，避免 prompt 過長
+function getStyle(){
+  let arr;
+  try{ arr = JSON.parse(localStorage.getItem("nvc_style_samples")); }catch{ arr=null; }
+  if(!Array.isArray(arr)){ arr = STYLE_SEED.slice(); setStyle(arr); } // 首次用種子初始化
+  return arr;
+}
+function setStyle(arr){ localStorage.setItem("nvc_style_samples", JSON.stringify(arr.slice(0,STYLE_LIMIT))); }
+function addStyle(input, mine){
+  const arr = getStyle().filter(s => s.mine !== mine); // 去重
+  arr.unshift({input, mine});
+  setStyle(arr);
+}
+// 組合完整 system prompt＝基礎規則 ＋ 使用者本人語氣範例
+function buildPrompt(){
+  const samples = getStyle();
+  if(!samples.length) return SYSTEM_PROMPT;
+  const block = samples.map((s,i)=>`範例${i+1}\n（原本想講）${s.input}\n（晉博本人會這樣講）${s.mine}`).join("\n\n");
+  return SYSTEM_PROMPT +
+    `\n\n【晉博本人的真實語氣範例（最重要的參考，請模仿這種用字、節奏、口吻，但仍要符合上面的 NVC 原則）】\n` + block;
+}
+
 function fmtTime(iso){
   const d = new Date(iso);
   const p = (n)=>String(n).padStart(2,"0");
@@ -226,7 +284,7 @@ function show(view){
   $("viewHistory").classList.toggle("active", view==="history");
   if(view==="history") renderHistory();
 }
-$("navSettings").onclick = ()=>{ $("keyInput").value=getKey(); show("settings"); };
+$("navSettings").onclick = ()=>{ $("keyInput").value=getKey(); refreshStyleStatus(); show("settings"); };
 $("navHistory").onclick  = ()=> show("history");
 $("backFromSettings").onclick = ()=> show("main");
 $("backFromHistory").onclick  = ()=> show("main");
@@ -237,6 +295,16 @@ $("saveKey").onclick = ()=>{
   if(!k){ alert("請先貼上金鑰"); return; }
   localStorage.setItem("nvc_api_key", k);
   show("main");
+};
+
+function refreshStyleStatus(){
+  const n = getStyle().length;
+  $("styleStatus").innerHTML = `目前已學會 <b>${n}</b> 組你的語氣範例。每次按結果下方「✏️ 教它我會怎麼講」就會 +1，改寫會越來越像你。`;
+}
+$("resetStyle").onclick = ()=>{
+  if(confirm("確定把語氣重設成最初的預設範例？你之後教它的會清掉。")){
+    setStyle(STYLE_SEED.slice()); refreshStyleStatus();
+  }
 };
 
 /* ===== 改寫 ===== */
@@ -261,7 +329,7 @@ async function doRewrite(){
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        systemInstruction:{ parts:[{text:SYSTEM_PROMPT}] },
+        systemInstruction:{ parts:[{text:buildPrompt()}] },
         contents:[{ role:"user", parts:[{text:text}] }],
         generationConfig:{
           responseMimeType:"application/json",
@@ -287,7 +355,7 @@ async function doRewrite(){
     try{ parsed = JSON.parse(raw); }
     catch{ out.innerHTML = `<div class="err">回傳格式怪怪的，再試一次。</div>`; console.error("parse fail:",raw); return; }
 
-    renderResult(parsed);
+    renderResult(parsed, text);
     saveToHistory(text, parsed);
 
   }catch(e){
@@ -298,7 +366,7 @@ async function doRewrite(){
   }
 }
 
-function renderResult(r){
+function renderResult(r, srcInput){
   const pause = r.needs_pause
     ? `<div class="pause">⚠️ 先深呼吸三秒，再照下面講會更好。</div>` : "";
   $("output").innerHTML = `
@@ -316,8 +384,29 @@ function renderResult(r){
         <div class="lbl"><span class="tag">💡 點評</span></div>
         <div class="txt">${esc(r.comment)}</div>
       </div>
+      <div class="learn">
+        <button class="copy" id="teachBtn">✏️ 不夠像我，教它我會怎麼講</button>
+        <div id="teachBox" style="display:none;margin-top:10px;">
+          <textarea id="teachInput" class="teach-ta">${esc(r.direct)}</textarea>
+          <div class="row" style="margin-top:8px;">
+            <button class="primary" id="teachSave" style="padding:11px;">存成我的語氣</button>
+            <button class="ghost" id="teachCancel" style="padding:11px;">取消</button>
+          </div>
+          <div class="note">改成你真的會講的樣子存起來，之後 AI 會越來越像你。</div>
+        </div>
+      </div>
     </div>`;
   bindCopy($("output"));
+
+  // 學習迴路：把使用者改過的版本存進語氣範例庫
+  $("teachBtn").onclick = ()=>{ $("teachBox").style.display="block"; $("teachBtn").style.display="none"; $("teachInput").focus(); };
+  $("teachCancel").onclick = ()=>{ $("teachBox").style.display="none"; $("teachBtn").style.display="inline-block"; };
+  $("teachSave").onclick = ()=>{
+    const mine = $("teachInput").value.trim();
+    if(!mine){ alert("先寫一句你會講的話"); return; }
+    addStyle(srcInput, mine);
+    $("teachBox").innerHTML = `<div class="hint">✅ 學起來了！之後改寫會更像你（已存 ${getStyle().length} 組語氣範例）。</div>`;
+  };
 }
 
 function copyBtn(text){
