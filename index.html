@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f7f5f0">
+<title>NVC 即時改寫</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  :root{
+    --bg:#f7f5f0;        /* 米白留白 */
+    --card:#ffffff;
+    --ink:#3a3a38;       /* 柔黑 */
+    --muted:#8a8780;
+    --line:#e9e5dc;
+    --gentle:#6fae8f;    /* 溫和：抹茶綠 */
+    --direct:#e0915a;    /* 直接：暖橘 */
+    --comment:#c9a24a;   /* 點評：芥末黃 */
+    --pause:#d98a8a;     /* 先深呼吸：暖紅 */
+    --accent:#3a3a38;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"PingFang TC","Noto Sans TC","Segoe UI",sans-serif;
+    line-height:1.6;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:540px;margin:0 auto;padding:16px;}
+
+  /* Header */
+  header{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 14px;}
+  header .title{font-size:20px;font-weight:700;letter-spacing:.5px;}
+  header .title small{font-weight:400;color:var(--muted);font-size:12px;margin-left:4px;}
+  .iconbtn{
+    background:none;border:none;font-size:22px;cursor:pointer;padding:6px;
+    border-radius:12px;line-height:1;color:var(--ink);
+  }
+  .iconbtn:active{background:#0000000d;}
+
+  /* Card */
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px;margin-bottom:14px;
+    box-shadow:0 2px 10px #00000008;
+  }
+
+  textarea{
+    width:100%;min-height:110px;resize:vertical;border:none;outline:none;
+    background:none;font:inherit;color:var(--ink);
+  }
+  textarea::placeholder{color:#b8b4ab;}
+
+  .primary{
+    width:100%;border:none;border-radius:14px;padding:14px;
+    background:var(--accent);color:#fff;font-size:16px;font-weight:600;
+    cursor:pointer;letter-spacing:2px;transition:transform .05s,opacity .2s;
+  }
+  .primary:active{transform:scale(.99);}
+  .primary:disabled{opacity:.5;cursor:default;}
+
+  /* Result blocks */
+  .pause{
+    display:flex;align-items:center;gap:8px;
+    background:#fbeeee;border:1px dashed var(--pause);color:#a85b5b;
+    border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:14px;
+  }
+  .block{margin-bottom:14px;}
+  .block:last-child{margin-bottom:0;}
+  .block .lbl{
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:14px;font-weight:600;margin-bottom:6px;
+  }
+  .block .tag{display:flex;align-items:center;gap:6px;}
+  .block.gentle .tag{color:var(--gentle);}
+  .block.direct .tag{color:var(--direct);}
+  .block.comment .tag{color:var(--comment);}
+  .block .txt{font-size:16px;}
+  .block.comment .txt{font-size:14px;color:var(--muted);}
+  .copy{
+    background:none;border:1px solid var(--line);border-radius:10px;
+    padding:4px 12px;font-size:12px;color:var(--muted);cursor:pointer;
+  }
+  .copy:active{background:#0000000d;}
+  .copy.done{color:var(--gentle);border-color:var(--gentle);}
+
+  .hint{color:var(--muted);font-size:13px;text-align:center;padding:8px;}
+  .err{color:#a85b5b;font-size:14px;text-align:center;padding:10px;}
+
+  /* Settings & History panels */
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .view-main.hidden{display:none;}
+
+  label.field{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;}
+  input[type=password],input[type=text]{
+    width:100%;border:1px solid var(--line);border-radius:12px;
+    padding:12px;font:inherit;outline:none;background:#fbfaf7;color:var(--ink);
+  }
+  .note{font-size:13px;color:var(--muted);margin-top:10px;}
+  .note a{color:var(--direct);}
+  .row{display:flex;gap:10px;margin-top:12px;}
+  .row .primary{flex:1;}
+  .ghost{
+    background:none;border:1px solid var(--line);border-radius:14px;
+    padding:14px;font-size:15px;color:var(--muted);cursor:pointer;
+  }
+
+  /* History */
+  .hitem{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;}
+  .hitem .htime{font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .hitem .hin{font-size:14px;margin-bottom:8px;}
+  .hitem .hin b{color:var(--muted);font-weight:400;}
+  .hline{font-size:14px;margin:3px 0;}
+  .hline .k{font-weight:600;margin-right:4px;}
+  .hitem .hfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px;}
+  .del{background:none;border:none;color:#c98b8b;font-size:12px;cursor:pointer;}
+  .empty{text-align:center;color:var(--muted);padding:40px 10px;font-size:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title">NVC 即時改寫 <small>好好說話</small></div>
+    <div>
+      <button class="iconbtn" id="navHistory" title="歷史">🕘</button>
+      <button class="iconbtn" id="navSettings" title="設定">⚙️</button>
+    </div>
+  </header>
+
+  <!-- 主畫面 -->
+  <div class="view-main" id="viewMain">
+    <div class="card">
+      <textarea id="input" placeholder="把你想講的話貼這裡，或用鍵盤上的麥克風直接說…"></textarea>
+    </div>
+    <button class="primary" id="rewriteBtn">改　寫</button>
+
+    <div id="output" style="margin-top:14px;"></div>
+  </div>
+
+  <!-- 設定 -->
+  <div class="panel" id="viewSettings">
+    <div class="card">
+      <label class="field">Gemini API 金鑰</label>
+      <input type="password" id="keyInput" placeholder="貼上你的金鑰…" autocomplete="off">
+      <div class="note">
+        金鑰<b>只存在你這支手機</b>，不會上傳、不進程式碼。<br>
+        還沒有金鑰？<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">到 Google AI Studio 免費領取 →</a>（不綁信用卡）
+      </div>
+      <div class="row">
+        <button class="primary" id="saveKey">儲存</button>
+        <button class="ghost" id="backFromSettings">返回</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 歷史 -->
+  <div class="panel" id="viewHistory">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:0 2px 12px;">
+      <button class="ghost" id="backFromHistory" style="padding:8px 14px;">← 返回</button>
+      <button class="ghost" id="clearHistory" style="padding:8px 14px;color:#c98b8b;">清空</button>
+    </div>
+    <div id="historyList"></div>
+  </div>
+
+</div>
+
+<script>
+/* ===== 設定區（可抽換模型） ===== */
+const MODEL = "gemini-2.5-flash"; // 換模型只改這行（與下方 endpoint 同源即可）
+const ENDPOINT = (key) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+const HISTORY_LIMIT = 200;
+
+const SYSTEM_PROMPT = `你是晉博的即時溝通教練，專長「非暴力溝通（NVC）」。
+
+【任務】使用者丟進來的，就是他「原本想講、但語氣不好或容易讓對方不舒服」的話。請直接把它改寫成 NVC 版本，不要反問、不要卡住、不要要求補充資訊。
+
+【NVC 原理】把「指責 / 命令 / 評價 / 貼標籤 / 翻舊帳」轉成「觀察＋感受＋需要＋請求」。但輸出必須是自然、口語、像真人會講的話，不要教科書句型，避免生硬的「我感到…因為我需要…」（除非真的很自然）。
+
+【要產出兩版】
+- gentle（溫和版）：更柔軟、保留關係溫度。
+- direct（直接版）：更明確說出自己的需求與界線，但絕不指責、不刺人。
+
+【點評 comment】用一行話講清楚「原句卡在哪（例：開頭就在指責 / 用了命令句 / 在評價對方）→ 我改了什麼」，目的是幫晉博內化，不是說教。
+
+【needs_pause】若原句情緒很重（有髒話、人身攻擊、極端字眼、明顯在氣頭上）就設為 true，否則 false。
+
+【邊界】若原話其實已經夠好：兩版可相近，並在 comment 說「這句沒問題，可以直接講」。
+
+【語言】一律繁體中文、台灣用語，像真人講話。嚴禁簡體字。`;
+
+const SCHEMA = {
+  type:"OBJECT",
+  properties:{
+    needs_pause:{type:"BOOLEAN"},
+    gentle:{type:"STRING"},
+    direct:{type:"STRING"},
+    comment:{type:"STRING"}
+  },
+  required:["needs_pause","gentle","direct","comment"],
+  propertyOrdering:["needs_pause","gentle","direct","comment"]
+};
+
+/* ===== 小工具 ===== */
+const $ = (id) => document.getElementById(id);
+const getKey = () => localStorage.getItem("nvc_api_key") || "";
+const getHistory = () => { try{return JSON.parse(localStorage.getItem("nvc_history")||"[]");}catch{return [];} };
+const setHistory = (arr) => localStorage.setItem("nvc_history", JSON.stringify(arr.slice(0,HISTORY_LIMIT)));
+const esc = (s) => (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function fmtTime(iso){
+  const d = new Date(iso);
+  const p = (n)=>String(n).padStart(2,"0");
+  return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/* ===== 畫面切換 ===== */
+function show(view){
+  $("viewMain").classList.toggle("hidden", view!=="main");
+  $("viewSettings").classList.toggle("active", view==="settings");
+  $("viewHistory").classList.toggle("active", view==="history");
+  if(view==="history") renderHistory();
+}
+$("navSettings").onclick = ()=>{ $("keyInput").value=getKey(); show("settings"); };
+$("navHistory").onclick  = ()=> show("history");
+$("backFromSettings").onclick = ()=> show("main");
+$("backFromHistory").onclick  = ()=> show("main");
+
+/* ===== 設定 ===== */
+$("saveKey").onclick = ()=>{
+  const k = $("keyInput").value.trim();
+  if(!k){ alert("請先貼上金鑰"); return; }
+  localStorage.setItem("nvc_api_key", k);
+  show("main");
+};
+
+/* ===== 改寫 ===== */
+$("rewriteBtn").onclick = doRewrite;
+
+async function doRewrite(){
+  const text = $("input").value.trim();
+  const out = $("output");
+  if(!text){ out.innerHTML = `<div class="hint">先輸入你想講的話 🙂</div>`; return; }
+  const key = getKey();
+  if(!key){
+    out.innerHTML = `<div class="err">還沒設定金鑰，先點右上 ⚙️ 貼上 Gemini 金鑰。</div>`;
+    return;
+  }
+
+  const btn = $("rewriteBtn");
+  btn.disabled = true; btn.textContent = "思考中…";
+  out.innerHTML = `<div class="hint">正在幫你換個說法…</div>`;
+
+  try{
+    const res = await fetch(ENDPOINT(key), {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        systemInstruction:{ parts:[{text:SYSTEM_PROMPT}] },
+        contents:[{ role:"user", parts:[{text:text}] }],
+        generationConfig:{
+          responseMimeType:"application/json",
+          responseSchema:SCHEMA,
+          temperature:0.7
+        }
+      })
+    });
+
+    if(!res.ok){
+      const t = await res.text();
+      let msg = `改寫失敗（${res.status}）`;
+      if(res.status===400 && /API key/i.test(t)) msg = "金鑰無效，請到 ⚙️ 重新貼上。";
+      else if(res.status===429) msg = "今天免費額度可能用完了，等一下再試。";
+      out.innerHTML = `<div class="err">${esc(msg)}</div>`;
+      console.error("Gemini error:", t);
+      return;
+    }
+
+    const data = await res.json();
+    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    let parsed;
+    try{ parsed = JSON.parse(raw); }
+    catch{ out.innerHTML = `<div class="err">回傳格式怪怪的，再試一次。</div>`; console.error("parse fail:",raw); return; }
+
+    renderResult(parsed);
+    saveToHistory(text, parsed);
+
+  }catch(e){
+    out.innerHTML = `<div class="err">網路或連線出問題，再試一次。</div>`;
+    console.error(e);
+  }finally{
+    btn.disabled = false; btn.textContent = "改　寫";
+  }
+}
+
+function renderResult(r){
+  const pause = r.needs_pause
+    ? `<div class="pause">⚠️ 先深呼吸三秒，再照下面講會更好。</div>` : "";
+  $("output").innerHTML = `
+    <div class="card">
+      ${pause}
+      <div class="block gentle">
+        <div class="lbl"><span class="tag">🌱 溫和版</span>${copyBtn(r.gentle)}</div>
+        <div class="txt">${esc(r.gentle)}</div>
+      </div>
+      <div class="block direct">
+        <div class="lbl"><span class="tag">🎯 直接版</span>${copyBtn(r.direct)}</div>
+        <div class="txt">${esc(r.direct)}</div>
+      </div>
+      <div class="block comment">
+        <div class="lbl"><span class="tag">💡 點評</span></div>
+        <div class="txt">${esc(r.comment)}</div>
+      </div>
+    </div>`;
+  bindCopy($("output"));
+}
+
+function copyBtn(text){
+  return `<button class="copy" data-copy="${esc(text)}">複製</button>`;
+}
+function bindCopy(scope){
+  scope.querySelectorAll(".copy").forEach(b=>{
+    b.onclick = async ()=>{
+      try{ await navigator.clipboard.writeText(b.dataset.copy); }
+      catch{ /* 某些瀏覽器需 fallback，略 */ }
+      b.textContent = "已複製"; b.classList.add("done");
+      setTimeout(()=>{ b.textContent="複製"; b.classList.remove("done"); }, 1500);
+    };
+  });
+}
+
+/* ===== 歷史 ===== */
+function saveToHistory(input, r){
+  const arr = getHistory();
+  arr.unshift({
+    id:String(Date.now()),
+    ts:new Date().toISOString(),
+    input, gentle:r.gentle, direct:r.direct, comment:r.comment, needs_pause:!!r.needs_pause
+  });
+  setHistory(arr);
+}
+
+function renderHistory(){
+  const arr = getHistory();
+  const list = $("historyList");
+  if(!arr.length){ list.innerHTML = `<div class="empty">還沒有紀錄。<br>改寫過的句子會自動存在這裡，方便你回顧自己常踩的語氣地雷。</div>`; return; }
+  list.innerHTML = arr.map(h=>`
+    <div class="hitem">
+      <div class="htime">${fmtTime(h.ts)}</div>
+      <div class="hin"><b>原：</b>${esc(h.input)}</div>
+      <div class="hline"><span class="k">🌱</span>${esc(h.gentle)} <button class="copy" data-copy="${esc(h.gentle)}">複製</button></div>
+      <div class="hline"><span class="k">🎯</span>${esc(h.direct)} <button class="copy" data-copy="${esc(h.direct)}">複製</button></div>
+      <div class="hline" style="color:var(--muted)"><span class="k">💡</span>${esc(h.comment)}</div>
+      <div class="hfoot"><button class="del" data-del="${h.id}">刪除</button></div>
+    </div>`).join("");
+  bindCopy(list);
+  list.querySelectorAll(".del").forEach(b=>{
+    b.onclick = ()=>{ setHistory(getHistory().filter(x=>x.id!==b.dataset.del)); renderHistory(); };
+  });
+}
+
+$("clearHistory").onclick = ()=>{
+  if(getHistory().length && confirm("確定清空全部歷史紀錄？")){ setHistory([]); renderHistory(); }
+};
+
+/* ===== 啟動：首次無金鑰直接進設定 ===== */
+if(!getKey()) show("settings"); else show("main");
+</script>
+</body>
+</html>

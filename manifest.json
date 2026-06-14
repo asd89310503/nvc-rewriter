@@ -1,0 +1,18 @@
+{
+  "name": "NVC 即時改寫",
+  "short_name": "好好說話",
+  "description": "把想講的話即時改寫成非暴力溝通版本",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f7f5f0",
+  "theme_color": "#f7f5f0",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="110" fill="#f3ede0"/>
+  <!-- 對話泡泡 -->
+  <path d="M136 132h240a44 44 0 0 1 44 44v120a44 44 0 0 1-44 44H250l-58 52a8 8 0 0 1-13-6v-46h-43a44 44 0 0 1-44-44V176a44 44 0 0 1 44-44z"
+        fill="#ffffff" stroke="#3a3a38" stroke-width="14" stroke-linejoin="round"/>
+  <!-- 抹茶綠小芽（溫和） -->
+  <path d="M236 252c0-30-22-52-52-52 0 30 22 52 52 52z" fill="#6fae8f"/>
+  <path d="M236 252c0-30 22-52 52-52 0 30-22 52-52 52z" fill="#8cc4a6"/>
+  <line x1="236" y1="252" x2="236" y2="300" stroke="#3a3a38" stroke-width="12" stroke-linecap="round"/>
+  <!-- 笑眼 -->
+  <path d="M300 196q14 14 28 0" fill="none" stroke="#3a3a38" stroke-width="11" stroke-linecap="round"/>
+  <path d="M344 196q14 14 28 0" fill="none" stroke="#3a3a38" stroke-width="11" stroke-linecap="round"/>
+</svg>
